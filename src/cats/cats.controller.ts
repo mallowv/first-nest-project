@@ -9,29 +9,28 @@ import {
   Post,
 } from '@nestjs/common';
 
+import CatDto from './cat.dto';
+
 @Controller('cats')
 export class CatsController {
   cats = {
-    marmalade: { breed: 'ginger' },
+    cats: [],
   };
 
   @Get()
-  findAllPaths(): { [name: string]: { [atribute: string]: string } } {
+  findAllPaths(): { cats: any[] } {
     return this.cats;
   }
 
   @Get('breed/:breed')
-  catsOfBreedPath(
-    @Param('breed') breed,
-  ): Array<{ [name: string]: { [atribute: string]: string } }> {
+  catsOfBreedPath(@Param('breed') breed): Array<{ cats: any[] }> {
     const catsOfBreed = [];
-    for (const cat in this.cats) {
-      if (this.cats[cat].breed == breed) {
-        const catOfBreed = {};
-        catOfBreed[cat] = this.cats[cat];
-        catsOfBreed.push(catOfBreed);
+    const cats = this.cats.cats;
+    cats.forEach((cat) => {
+      if (cat.breed == breed) {
+        catsOfBreed.push(cat);
       }
-    }
+    });
 
     if (catsOfBreed.length != 0) return catsOfBreed;
     throw new HttpException(
@@ -40,29 +39,43 @@ export class CatsController {
     );
   }
 
-  @Post('add')
-  addCat(@Body() body): string {
-    if (this.cats[body.catname] != undefined) {
-      throw new HttpException(
-        `${body.catname} already exists https://http.cat/409`,
-        HttpStatus.CONFLICT,
-      );
-    }
+  @Post()
+  addCat(@Body() cat: CatDto): string {
+    const cats = this.cats.cats;
+    cats.forEach((catIter) => {
+      if (catIter.name == cat.name) {
+        throw new HttpException(
+          `${cat.name} already exists https://http.cat/409`,
+          HttpStatus.CONFLICT,
+        );
+      }
+    });
 
-    this.cats[body.catname] = body.info;
-    return body.catname + ' added';
+    cats.push(cat);
+    return cat.name + ' added';
   }
 
-  @Delete('delete')
-  removeCat(@Body() body): string {
-    if (this.cats[body.catname] == undefined) {
+  @Delete()
+  removeCat(@Body() cat): string {
+    const cats = this.cats.cats;
+    let catIdx;
+    cats.every((catIter, idx) => {
+      if (catIter.name == cat.name) {
+        catIdx = idx;
+        return false;
+      }
       throw new HttpException(
-        `${body.catname} does not exist https://http.cat/404`,
+        `${cat.name} does not exist in the db https://http.cat/404`,
+        HttpStatus.NOT_FOUND,
+      );
+    });
+    if (cats.length == 0) {
+      throw new HttpException(
+        `${cat.name} does not exist in the db https://http.cat/404`,
         HttpStatus.NOT_FOUND,
       );
     }
-
-    delete this.cats[body.catname];
-    return body.catname + ' deleted';
+    this.cats.cats.splice(catIdx);
+    return cat.name + ' deleted';
   }
 }
